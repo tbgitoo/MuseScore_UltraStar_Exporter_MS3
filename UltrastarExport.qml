@@ -14,18 +14,21 @@ import FileIO 3.0
 //Copyright Joseph Eoff, April 2015
 MuseScore {
 	menuPath: "Plugins." + "Ultrastar Export"
-	version: "2.0"
+	version: "2.1"
 	description: "Export to Ultrastar format"
 	requiresScore: true
+    pluginType: "dialog"
+    
+    id: pluginDialog
+    width:  360
+    height: 600
 
 	onRun: {
-		exportDialog.visible = false
 		// check MuseScore version
 		if ((mscoreMajorVersion == 3) && (mscoreMinorVersion == 0) && (mscoreUpdateVersion < 5)) {
 			errorDialog.openErrorDialog(
 						qsTr("Minimum MuseScore Version %1 required for export").arg("3.0.5"))
 		}
-		exportDialog.visible = true
 		fillDefaultValues()
 	}
 
@@ -137,113 +140,96 @@ MuseScore {
 		Component.onCompleted: visible = false
 	}
 
-	Dialog {
-		id: exportDialog
-		visible: true
-		title: qsTr("Ultrastar Export")
-		width: formbackground.width
-		height: formbackground.height
-		contentItem: Rectangle {
-			id: formbackground
-			width: exporterColumn.width + 20
-			height: exporterColumn.height + 20
-			color: "lightgrey"
-			ColumnLayout {
-				id: exporterColumn
-				GridLayout {
-					id: grid
-					columns: 2
-					anchors.fill: parent
-					anchors.margins: 10
-					Label {
-						text: qsTr("Player 1")
-						Layout.columnSpan: 2
-					}
-					Label {
-						text: qsTranslate("Ms::MuseScore", "Instrument")
-					}
-					ComboBox {
-						id: instrumentPlayer1
-						onCurrentIndexChanged: {
-							loadVoiceList(currentText, player1Voices, voicePlayer1);
-						}
-					}
-					Label {
-						text: qsTr("Voice")
-					}
-					ComboBox {
-						id: voicePlayer1
-					}
-					Label {
-						text: qsTr("Duet")
-					}
-					CheckBox {
-						id: duet
-						onClicked: {
-							instrumentPlayer2.enabled = checked
-							voicePlayer2.enabled = checked
-						}
-					}
-					Label {
-						text: qsTr("Player 2")
-						Layout.columnSpan: 2
-					}
-					Label {
-						text: qsTranslate("Ms::MuseScore", "Instrument")
-					}
-					ComboBox {
-						id: instrumentPlayer2
-						onCurrentIndexChanged: {
-							loadVoiceList(currentText, player2Voices, voicePlayer2);
-						}
-					}
-					Label {
-						text: qsTr("Voice")
-					}
-					ComboBox {
-						id: voicePlayer2
-					}
-					Button {
-						id: selectDirectory
-						text: qsTr("Select export directory")
-						onClicked: {
-							directorySelectDialog.open()
-						}
-					}
-					Label {
-						id: exportDirectory
-						text: ""
-					}
-					Label {
-						text: qsTr("High Accuracy Mode")
-					}
-					CheckBox {
-						id: highAccuracyMode
-					}
-					Button {
-						id: exportButton
-						text: qsTranslate("PrefsDialogBase", "Export")
-						onClicked: {
-							exportUltrastar()
-							//Qt.quit()
-						} // onClicked
-					}
-					Button {
-						id: cancelButton
-						text: qsTr("Cancel")
-						onClicked: {
-							exportDialog.visible = false
-							Qt.quit()
-						} // onClicked
-					}
-					Label {
-						id: exportStatus
-						text: ""
-					}
-				}
-			}
-		}
-	}
+    GridLayout {
+                    id: grid
+                    columns: 2
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    Label {
+                        text: qsTr("Player 1")
+                        Layout.columnSpan: 2
+                    }
+                    Label {
+                        text: qsTranslate("Ms::MuseScore", "Instrument")
+                    }
+                    ComboBox {
+                        id: instrumentPlayer1
+                        onCurrentIndexChanged: {
+                            loadVoiceList(currentText, player1Voices, voicePlayer1);
+                        }
+                    }
+                    Label {
+                        text: qsTr("Voice")
+                    }
+                    ComboBox {
+                        id: voicePlayer1
+                    }
+                    Label {
+                        text: qsTr("Duet")
+                    }
+                    CheckBox {
+                        id: duet
+                        onClicked: {
+                            instrumentPlayer2.enabled = checked
+                            voicePlayer2.enabled = checked
+                        }
+                    }
+                    Label {
+                        text: qsTr("Player 2")
+                        Layout.columnSpan: 2
+                    }
+                    Label {
+                        text: qsTranslate("Ms::MuseScore", "Instrument")
+                    }
+                    ComboBox {
+                        id: instrumentPlayer2
+                        onCurrentIndexChanged: {
+                            loadVoiceList(currentText, player2Voices, voicePlayer2);
+                        }
+                    }
+                    Label {
+                        text: qsTr("Voice")
+                    }
+                    ComboBox {
+                        id: voicePlayer2
+                    }
+                    Button {
+                        id: selectDirectory
+                        text: qsTranslate("ScoreComparisonTool", "Browse")
+                        onClicked: {
+                            directorySelectDialog.open();
+                        }
+                    }
+                    Label {w
+                        id: exportDirectory
+                        text: ""
+                    }
+                    Label {
+                        text: qsTr("High Accuracy Mode")
+                    }
+                    CheckBox {
+                        id: highAccuracyMode
+                    }
+                    Button {
+                        id: exportButton
+                        text: qsTranslate("PrefsDialogBase", "Export")
+                        onClicked: {
+                            exportUltrastar()
+                            //Qt.quit()
+                        } // onClicked
+                    }
+                    Button {
+                        id: cancelButton
+                        text: qsTr("Cancel")
+                        onClicked: {
+                            Qt.quit()
+                        } // onClicked
+                    }
+                    Label {
+                        id: exportStatus
+                        text: ""
+                    }
+    }
 
 	function exportUltrastar() {
 		exportStatus.text = qsTr("Exporting .txt File.")
