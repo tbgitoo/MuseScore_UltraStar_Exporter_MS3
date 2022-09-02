@@ -503,17 +503,18 @@ MuseScore {
         var segment = curScore.firstSegment(Segment.ChordRest);
         //filter on firstSegment doesn't seem to work, so stepping here manually
         while ((segment != null) && (segment.segmentType !== Segment.ChordRest)) {
-            segment = segment.nextInMeasure;
-        }
-        if (segment != null) { //found first chord/rest of the score
+            if (segment != null) { //found first chord/rest of the score
             //let's see if there's a TEMPO_TEXT assigned to it
-            for (var i = segment.annotations.length; i-- > 0; ) {
-                if (segment.annotations[i].type === Element.TEMPO_TEXT) {
-                    bpm = segment.annotations[i].tempo;
-                    break;
+                for (var i = segment.annotations.length; i-- > 0; ) {
+                    if (segment.annotations[i].type === Element.TEMPO_TEXT) {
+                        bpm = segment.annotations[i].tempo;
+                        break;
+                    }
                 }
             }
+            segment = segment.nextInMeasure;
         }
+        
         console.log('Tempo: ' + bpm + ' | Real BPM: ' + (bpm * 60));
         bpm = calculateBPMfromTempo(bpm);
         console.log('\tTickBPM: ' + bpm);

@@ -26,3 +26,10 @@ Usage:
 Alternatively, use the Annotator (Menu View/UltraStar Annotator.) Select a note with Shift and Left mouse button - draw a box around the note. Click the appropriate button to add the annotation.
 
 Make sure to select the correct instrument when exporting.
+
+tbgitoo: added note naming inspired from Mirabilo's MuseScore projects (https://github.com/mirabilos/mscore-plugins)
+
+┌─────────────────────────────────────┐
+│ About mirabilos’ MuseScore projects │
+└─────────────────────────────────────┘
+
