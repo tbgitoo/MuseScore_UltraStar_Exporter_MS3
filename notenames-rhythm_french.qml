@@ -425,9 +425,9 @@ MuseScore {
                                 {
                                     if(second_cursor.element.lyrics[0].text=="croche")
                                     {
-                                        cursor.element.lyrics[0].text="poin";
+                                        cursor.element.lyrics[0].text="nooiire";
                                         cursor.element.lyrics[0].syllabic = Lyrics.BEGIN;
-                                        second_cursor.element.lyrics[0].text="tée";
+                                        second_cursor.element.lyrics[0].text="croche";
                                         second_cursor.element.lyrics[0].syllabic = Lyrics.END;
                                         done=true;
                                     }
@@ -442,6 +442,191 @@ MuseScore {
                 }
             } // end 1/4 with . and the 1/8
             
+            
+            if(cursor.element.lyrics[0].text=="croche") // 1/8 with a beam
+            {
+                if(cursor.element.beam)
+                {
+                    // only start when note on beat
+                    // start tick
+                        var beatMeasure=(cursor.tick-cursor.measure.firstSegment.tick)/division;
+                        if(Math.round(beatMeasure)==beatMeasure)
+                        {
+                        var second_cursor=score.newCursor();
+                        second_cursor.staffIdx=cursor.staffIdx;
+                        second_cursor.voice=cursor.voice;
+                        second_cursor.rewindToTick(cursor.tick+division*0.5);
+                        second_cursor.staffIdx=cursor.staffIdx;
+                        second_cursor.voice=cursor.voice;
+                        var done=false;
+                        while (!done && second_cursor.segment &&
+                            (second_cursor.tick == cursor.tick+division*0.5))
+                        {
+                            if (second_cursor.element)
+                            {
+                                if (second_cursor.element.type == Element.CHORD)
+                                {
+                                    if(second_cursor.element.lyrics)
+                                    {
+                                        if(second_cursor.element.lyrics.length>0)
+                                        {
+                                            if(second_cursor.element.lyrics[0].text=="croche")
+                                            {
+                                                
+                                                    cursor.element.lyrics[0].text="deux";
+                                        
+                                                    second_cursor.element.lyrics[0].text="croches";
+                                        
+                                                    done=true;
+                                                
+                                            }
+                                        }
+                                    }
+                                }
+                                if(!done)
+                                {
+                                    second_cursor.next();
+                                }
+                            }
+                        }
+                    }
+                        
+                }
+            } // end 1/8 linked with beam
+            if(cursor.element.lyrics[0].text=="double") // 1/16 with a beam
+            {
+                if(cursor.element.beam)
+                {
+                        var second_cursor=score.newCursor();
+                        second_cursor.staffIdx=cursor.staffIdx;
+                        second_cursor.voice=cursor.voice;
+                        second_cursor.rewindToTick(cursor.tick+division*0.25);
+                        second_cursor.staffIdx=cursor.staffIdx;
+                        second_cursor.voice=cursor.voice;
+                        var done=false;
+                        while (!done && second_cursor.segment &&
+                            (second_cursor.tick == cursor.tick+division*0.25))
+                        {
+                            if (second_cursor.element)
+                            {
+                                if (second_cursor.element.type == Element.CHORD)
+                                {
+                                    if(second_cursor.element.lyrics)
+                                    {
+                                        if(second_cursor.element.lyrics.length>0)
+                                        {
+                                            if(second_cursor.element.lyrics[0].text=="double")
+                                            {
+                                                cursor.element.lyrics[0].text="deux";
+                                        
+                                                second_cursor.element.lyrics[0].text="doubles";
+                                        
+                                                done=true;
+                                            }
+                                        }
+                                    }
+                                }
+                                if(!done)
+                                {
+                                    second_cursor.next();
+                                }
+                            }
+                        }
+                    
+                        
+                }
+            } // end 1/16 linked with beam
+            if(cursor.element.lyrics[0].text=="croche") // triolets
+            {
+                if(cursor.element.beam)
+                {
+                        var second_cursor=score.newCursor();
+                        second_cursor.staffIdx=cursor.staffIdx;
+                        second_cursor.voice=cursor.voice;
+                        second_cursor.rewindToTick(cursor.tick+division/3);
+                        second_cursor.staffIdx=cursor.staffIdx;
+                        second_cursor.voice=cursor.voice;
+                        var done=false;
+                        while (!done && second_cursor.segment &&
+                            (second_cursor.tick == cursor.tick+division/3))
+                        {
+                            if (second_cursor.element)
+                            {
+                                if (second_cursor.element.type == Element.CHORD)
+                                {
+                                    if(second_cursor.element.lyrics)
+                                    {
+                                        if(second_cursor.element.lyrics.length>0)
+                                        {
+                                            if(second_cursor.element.lyrics[0].text=="croche")
+                                            {
+                                            
+                                                var third_cursor=score.newCursor();
+                                                third_cursor.staffIdx=cursor.staffIdx;
+                                                third_cursor.voice=cursor.voice;
+                                                third_cursor.rewindToTick(second_cursor.tick+division/3);
+                                                third_cursor.staffIdx=cursor.staffIdx;
+                                                third_cursor.voice=cursor.voice;
+                                                
+                                                while (!done && third_cursor.segment &&
+                            (third_cursor.tick == second_cursor.tick+division/3))
+                                                {
+                                                    if (third_cursor.element)
+                                                    {
+                                                    if (third_cursor.element.type == Element.CHORD)
+                                                    {
+                                                        if(third_cursor.element.lyrics)
+                                                        {
+                                                        if(third_cursor.element.lyrics.length>0)
+                                                            {
+                                                                if(third_cursor.element.lyrics[0].text=="croche")
+                                                        {
+                                                            cursor.element.lyrics[0].text="tri";
+                                                                                                                        second_cursor.element.lyrics[0].text="o";
+                                                                                                                                                                                                            third_cursor.element.lyrics[0].text="lets";
+                                                         
+                                                                                                 cursor.element.lyrics[0].syllabic = Lyrics.BEGIN;
+                                                        
+                                                                                                                                                         second_cursor.element.lyrics[0].syllabic = Lyrics.MIDDLE;
+                                                                                                                                                                                                                                             third_cursor.element.lyrics[0].syllabic = Lyrics.END;
+                                                        
+                                                                                                                                                         
+                                                        
+                                                        
+                                                        
+                                                        done=true;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if(!done)
+                                            {
+                                                third_cursor.next();
+                                            }
+                            }
+                        }
+                                            
+                                            
+                                            
+                                            
+                                            
+                                                
+                                        
+                                                done=true;
+                                            }
+                                        }
+                                    }
+                                }
+                                if(!done)
+                                {
+                                    second_cursor.next();
+                                }
+                            }
+                        }
+                    
+                        
+                }
+            } // end 1/16 linked with beam
             
     
         } // End has lyrics
