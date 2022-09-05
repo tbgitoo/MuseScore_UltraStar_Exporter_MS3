@@ -59,16 +59,19 @@
         }
 
         function loadVoiceList(instrumentName, voiceList, voiceCombo) {
-            for (var i = 0; i < curScore.parts.length; i++) {
-                var partName = curScore.parts[i].name;
-                //in v3.0.5/3.1 plugin framework isn't able to return the actual instrument/partname
-                if (partName === "Part") { // so let's enumerate it in that case
-                    partName += " " + (i + 1);
-                }
-                if (partName === instrumentName) {
-                    voiceList.clear();
-                    for (var j = 0; j < (curScore.parts[i].endTrack - curScore.parts[i].startTrack); j++) {
-                        voiceList.append({ j: (j + 1) });
+            if(curScore && curScore.parts)
+            {
+                for (var i = 0; i < curScore.parts.length; i++) {
+                    var partName = curScore.parts[i].name;
+                    //in v3.0.5/3.1 plugin framework isn't able to return the actual instrument/partname
+                    if (partName === "Part") { // so let's enumerate it in that case
+                        partName += " " + (i + 1);
+                    }
+                    if (partName === instrumentName) {
+                        voiceList.clear();
+                        for (var j = 0; j < (curScore.parts[i].endTrack - curScore.parts[i].startTrack); j++) {
+                            voiceList.append({ j: (j + 1) });
+                        }
                     }
                 }
             }

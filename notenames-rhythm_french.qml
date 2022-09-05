@@ -361,87 +361,79 @@ MuseScore {
         }
     }
     
-    function multi_span_names(cursor, measureMap, doneMap,score){
+    // Get a cursor pointing to the next note in the same voice and staff
+    // at a given distance (in ticks), of given length and with or without
+    // lyrics, if such a note exists
+    function getCursorToNextNote(cursor,score,
+        advance_by_ticks,nominal_duration_next_note,require_lyrics)
+    {
+                var second_cursor=score.newCursor();
+                second_cursor.staffIdx=cursor.staffIdx;
+                second_cursor.voice=cursor.voice;
+                second_cursor.rewindToTick(cursor.tick+advance_by_ticks);
+                second_cursor.staffIdx=cursor.staffIdx;
+                second_cursor.voice=cursor.voice;
+                var done=false;
+                while (!done && second_cursor.segment &&
+                    (second_cursor.tick == cursor.tick+advance_by_ticks)) {
+                    if (second_cursor.element)
+                    {
+                        if (second_cursor.element.type == Element.CHORD  && second_cursor.element.duration.ticks==nominal_duration_next_note)
+                        {
+                           if(second_cursor.element.lyrics || !require_lyrics )
+                            {
+                                if(!require_lyrics || second_cursor.element.lyrics.length>0)
+                                {
+                                    
+                                        done=true;
+                                    
+                                }
+                            }
+                        }
+                        if(!done)
+                        {
+                            second_cursor.next();
+                        }
+                    }
+                }
+                if(done) { return second_cursor; }
+                return null;
+        
+    }
+    
+    function span_names_two_notes(cursor, measureMap, doneMap,score){
         if (!cursor.element.lyrics)
             return;
         if (cursor.element.lyrics.length>0) {
             if(cursor.element.lyrics[0].text=="0.75") // 1/8 with . and the 1/16
             {
-                var second_cursor=score.newCursor();
-                second_cursor.staffIdx=cursor.staffIdx;
-                second_cursor.voice=cursor.voice;
-                second_cursor.rewindToTick(cursor.tick+division*0.75);
-                second_cursor.staffIdx=cursor.staffIdx;
-                second_cursor.voice=cursor.voice;
-                var done=false;
-                while (!done && second_cursor.segment &&
-                    (second_cursor.tick == cursor.tick+division*0.75)) {
-                    if (second_cursor.element)
-                    {
-                        if (second_cursor.element.type == Element.CHORD)
-                        {
-                           if(second_cursor.element.lyrics)
-                            {
-                                if(second_cursor.element.lyrics.length>0)
-                                {
-                                    if(second_cursor.element.lyrics[0].text=="double")
-                                    {
+                var second_cursor=getCursorToNextNote(cursor,score,
+                                division*0.75,division*0.25,true);
+                if(second_cursor && second_cursor.element.lyrics[0].text=="double")
+                {
                                         cursor.element.lyrics[0].text="sau";
                                         cursor.element.lyrics[0].syllabic = Lyrics.BEGIN;
                                         second_cursor.element.lyrics[0].text="te";
                                         second_cursor.element.lyrics[0].syllabic = Lyrics.END;
-                                        done=true;
-                                    }
-                                }
-                            }
-                        }
-                        if(!done)
-                        {
-                            second_cursor.next();
-                        }
-                    }
+                    
                 }
+                
             } // end 1/8 with . and the 1/16
             
             
             if(cursor.element.lyrics[0].text=="1.5") // 1/4 with . and the 1/8
             {
-                var second_cursor=score.newCursor();
-                second_cursor.staffIdx=cursor.staffIdx;
-                second_cursor.voice=cursor.voice;
-                second_cursor.rewindToTick(cursor.tick+division*1.5);
-                second_cursor.staffIdx=cursor.staffIdx;
-                second_cursor.voice=cursor.voice;
-                var done=false;
-                while (!done && second_cursor.segment &&
-                    (second_cursor.tick == cursor.tick+division*1.5)) {
-                    if (second_cursor.element)
-                    {
-                        if (second_cursor.element.type == Element.CHORD)
-                        {
-                           if(second_cursor.element.lyrics)
-                            {
-                                if(second_cursor.element.lyrics.length>0)
-                                {
-                                    if(second_cursor.element.lyrics[0].text=="croche")
-                                    {
-                                        cursor.element.lyrics[0].text="nooiire";
-                                        cursor.element.lyrics[0].syllabic = Lyrics.BEGIN;
-                                        second_cursor.element.lyrics[0].text="croche";
-                                        second_cursor.element.lyrics[0].syllabic = Lyrics.END;
-                                        done=true;
-                                    }
-                                }
-                            }
-                        }
-                        if(!done)
-                        {
-                            second_cursor.next();
-                        }
-                    }
+                var second_cursor=getCursorToNextNote(cursor,score,
+                    division*1.5,division*0.5,true);
+                if(second_cursor && second_cursor.element.lyrics[0].text=="croche")
+                {
+                    cursor.element.lyrics[0].text="nooiire";
+                    cursor.element.lyrics[0].syllabic = Lyrics.BEGIN;
+                    second_cursor.element.lyrics[0].text="croche";
+                    second_cursor.element.lyrics[0].syllabic = Lyrics.END;
+
                 }
             } // end 1/4 with . and the 1/8
-            
             
             if(cursor.element.lyrics[0].text=="croche") // 1/8 with a beam
             {
@@ -452,183 +444,111 @@ MuseScore {
                         var beatMeasure=(cursor.tick-cursor.measure.firstSegment.tick)/division;
                         if(Math.round(beatMeasure)==beatMeasure)
                         {
-                        var second_cursor=score.newCursor();
-                        second_cursor.staffIdx=cursor.staffIdx;
-                        second_cursor.voice=cursor.voice;
-                        second_cursor.rewindToTick(cursor.tick+division*0.5);
-                        second_cursor.staffIdx=cursor.staffIdx;
-                        second_cursor.voice=cursor.voice;
-                        var done=false;
-                        while (!done && second_cursor.segment &&
-                            (second_cursor.tick == cursor.tick+division*0.5))
-                        {
-                            if (second_cursor.element)
+                            var second_cursor=getCursorToNextNote(cursor,score,
+                                division*0.5,division*0.5,true);
+                            if(second_cursor && second_cursor.element.lyrics[0].text=="croche")
                             {
-                                if (second_cursor.element.type == Element.CHORD)
-                                {
-                                    if(second_cursor.element.lyrics)
-                                    {
-                                        if(second_cursor.element.lyrics.length>0)
-                                        {
-                                            if(second_cursor.element.lyrics[0].text=="croche")
-                                            {
-                                                
-                                                    cursor.element.lyrics[0].text="deux";
-                                        
-                                                    second_cursor.element.lyrics[0].text="croches";
-                                        
-                                                    done=true;
-                                                
-                                            }
-                                        }
-                                    }
-                                }
-                                if(!done)
-                                {
-                                    second_cursor.next();
-                                }
+                                    cursor.element.lyrics[0].text="deux";
+                                    second_cursor.element.lyrics[0].text="croches";
+        
                             }
                         }
                     }
-                        
-                }
             } // end 1/8 linked with beam
+            
             if(cursor.element.lyrics[0].text=="double") // 1/16 with a beam
             {
                 if(cursor.element.beam)
                 {
-                        var second_cursor=score.newCursor();
-                        second_cursor.staffIdx=cursor.staffIdx;
-                        second_cursor.voice=cursor.voice;
-                        second_cursor.rewindToTick(cursor.tick+division*0.25);
-                        second_cursor.staffIdx=cursor.staffIdx;
-                        second_cursor.voice=cursor.voice;
-                        var done=false;
-                        while (!done && second_cursor.segment &&
-                            (second_cursor.tick == cursor.tick+division*0.25))
+                    // only start when note on 1/2 beat
+                    // start tick
+                        var beatMeasure=(cursor.tick-cursor.measure.firstSegment.tick)/division;
+                        if(Math.round(beatMeasure*2)==beatMeasure*2)
                         {
-                            if (second_cursor.element)
+                            var second_cursor=getCursorToNextNote(cursor,score,
+                                division*0.25,division*0.25,true);
+                            if(second_cursor && second_cursor.element.lyrics[0].text=="double")
                             {
-                                if (second_cursor.element.type == Element.CHORD)
-                                {
-                                    if(second_cursor.element.lyrics)
-                                    {
-                                        if(second_cursor.element.lyrics.length>0)
-                                        {
-                                            if(second_cursor.element.lyrics[0].text=="double")
-                                            {
-                                                cursor.element.lyrics[0].text="deux";
-                                        
-                                                second_cursor.element.lyrics[0].text="doubles";
-                                        
-                                                done=true;
-                                            }
-                                        }
-                                    }
-                                }
-                                if(!done)
-                                {
-                                    second_cursor.next();
-                                }
+                                    cursor.element.lyrics[0].text="deux";
+                                    second_cursor.element.lyrics[0].text="doubles";
+        
                             }
                         }
-                    
-                        
-                }
+                    }
             } // end 1/16 linked with beam
+            
+            
+            
             if(cursor.element.lyrics[0].text=="croche") // triolets
             {
                 if(cursor.element.beam)
                 {
-                        var second_cursor=score.newCursor();
-                        second_cursor.staffIdx=cursor.staffIdx;
-                        second_cursor.voice=cursor.voice;
-                        second_cursor.rewindToTick(cursor.tick+division/3);
-                        second_cursor.staffIdx=cursor.staffIdx;
-                        second_cursor.voice=cursor.voice;
-                        var done=false;
-                        while (!done && second_cursor.segment &&
-                            (second_cursor.tick == cursor.tick+division/3))
+                        var second_cursor=getCursorToNextNote(cursor,score,
+                                division/3,division*0.5,true);
+                        if(second_cursor && second_cursor.element.lyrics[0].text=="croche")
                         {
-                            if (second_cursor.element)
+                            var third_cursor=getCursorToNextNote(second_cursor,score,
+                                division/3,division*0.5,true);
+                            if(third_cursor && third_cursor.element.lyrics[0].text=="croche")
                             {
-                                if (second_cursor.element.type == Element.CHORD)
-                                {
-                                    if(second_cursor.element.lyrics)
-                                    {
-                                        if(second_cursor.element.lyrics.length>0)
-                                        {
-                                            if(second_cursor.element.lyrics[0].text=="croche")
-                                            {
-                                            
-                                                var third_cursor=score.newCursor();
-                                                third_cursor.staffIdx=cursor.staffIdx;
-                                                third_cursor.voice=cursor.voice;
-                                                third_cursor.rewindToTick(second_cursor.tick+division/3);
-                                                third_cursor.staffIdx=cursor.staffIdx;
-                                                third_cursor.voice=cursor.voice;
-                                                
-                                                while (!done && third_cursor.segment &&
-                            (third_cursor.tick == second_cursor.tick+division/3))
-                                                {
-                                                    if (third_cursor.element)
-                                                    {
-                                                    if (third_cursor.element.type == Element.CHORD)
-                                                    {
-                                                        if(third_cursor.element.lyrics)
-                                                        {
-                                                        if(third_cursor.element.lyrics.length>0)
-                                                            {
-                                                                if(third_cursor.element.lyrics[0].text=="croche")
-                                                        {
-                                                            cursor.element.lyrics[0].text="tri";
-                                                                                                                        second_cursor.element.lyrics[0].text="o";
-                                                                                                                                                                                                            third_cursor.element.lyrics[0].text="lets";
-                                                         
-                                                                                                 cursor.element.lyrics[0].syllabic = Lyrics.BEGIN;
-                                                        
-                                                                                                                                                         second_cursor.element.lyrics[0].syllabic = Lyrics.MIDDLE;
-                                                                                                                                                                                                                                             third_cursor.element.lyrics[0].syllabic = Lyrics.END;
-                                                        
-                                                                                                                                                         
-                                                        
-                                                        
-                                                        
-                                                        done=true;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            if(!done)
-                                            {
-                                                third_cursor.next();
-                                            }
+                                cursor.element.lyrics[0].text="tri";
+                                second_cursor.element.lyrics[0].text="o";
+                                third_cursor.element.lyrics[0].text="lets";
+                                cursor.element.lyrics[0].syllabic = Lyrics.BEGIN;
+                                second_cursor.element.lyrics[0].syllabic = Lyrics.MIDDLE;
+                                third_cursor.element.lyrics[0].syllabic = Lyrics.END;
                             }
                         }
-                                            
-                                            
-                                            
-                                            
-                                            
-                                                
-                                        
-                                                done=true;
-                                            }
-                                        }
-                                    }
-                                }
-                                if(!done)
-                                {
-                                    second_cursor.next();
-                                }
-                            }
-                        }
-                    
-                        
-                }
+                    }
             } // end 1/16 linked with beam
             
+            
+            
+        } // End has lyrics
+        
+        
+        
+        
+    }
     
+    
+    function span_names_four_notes(cursor, measureMap, doneMap,score){
+        if (!cursor.element.lyrics)
+            return;
+        if (cursor.element.lyrics.length>0)
+        {
+            // only start when note on beat
+            // start tick
+            var beatMeasure=(cursor.tick-cursor.measure.firstSegment.tick)/division;
+            if(Math.round(beatMeasure)==beatMeasure)
+            {
+                if(cursor.element.lyrics[0].text=="deux" && cursor.element.duration.ticks==division*0.25) // 4 1/16
+                {
+                    var second_cursor=getCursorToNextNote(cursor,score,
+                                division*0.25,division*0.25,true);
+                    if(second_cursor && second_cursor.element.lyrics[0].text=="doubles")
+                    {
+                        var third_cursor=getCursorToNextNote(second_cursor,score,
+                                division*0.25,division*0.25,true);
+                        if(third_cursor && third_cursor.element.lyrics[0].text=="deux")
+                        {
+                            var fourth_cursor=getCursorToNextNote(third_cursor,score,
+                                division*0.25,division*0.25,true);
+                            if(fourth_cursor && fourth_cursor.element.lyrics[0].text=="doubles")
+                            {
+                                        cursor.element.lyrics[0].text="quat";
+                                        cursor.element.lyrics[0].syllabic = Lyrics.BEGIN;
+                                        second_cursor.element.lyrics[0].text="re";
+                                        second_cursor.element.lyrics[0].syllabic = Lyrics.END;
+                                        third_cursor.element.lyrics[0].text="doub";
+                                        third_cursor.element.lyrics[0].syllabic = Lyrics.BEGIN;
+                                        fourth_cursor.element.lyrics[0].text="les";
+                                        fourth_cursor.element.lyrics[0].syllabic = Lyrics.END;
+                            }
+                        }
+                    }
+                }
+            }
         } // End has lyrics
     }
 
@@ -686,7 +606,9 @@ MuseScore {
         doneMap = {};
         applyToSelectionOrScore(labelBeat, measureMap, doneMap);
         doneMap = {};
-        applyToSelectionOrScore(multi_span_names, measureMap, doneMap,curScore);
+        applyToSelectionOrScore(span_names_two_notes, measureMap, doneMap,curScore);
+        doneMap = {};
+        applyToSelectionOrScore(span_names_four_notes, measureMap, doneMap,curScore);
         
 
         Qt.quit();
