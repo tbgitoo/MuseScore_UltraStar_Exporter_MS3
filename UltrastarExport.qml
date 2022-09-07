@@ -20,7 +20,7 @@
         pluginType: "dialog"
         
         id: pluginDialog
-        width:  360
+        width:  500
         height: 600
 
         onRun: {
@@ -45,6 +45,8 @@
             loadVoiceList(instrumentPlayer1.currentText, player1Voices, voicePlayer1);
             loadVoiceList(instrumentPlayer2.currentText, player2Voices, voicePlayer2);
             directorySelectDialog.folder = ((Qt.platform.os=="windows")? "file:///" : "file://") + exportDirectory.text;
+            highAccuracyMode.checked=false;
+            variableSpeedMode.checked=true;
         }
 
         function loadInstrumentList(instrumentList) {
@@ -84,6 +86,7 @@
             id: settings
             property alias exportDirectory: exportDirectory.text
             property alias highAccuracyMode: highAccuracyMode.checked
+            property alias variableSpeedMode: variableSpeedMode.checked
         }
 
         ListModel {
@@ -196,6 +199,9 @@
                         ComboBox {
                             id: voicePlayer2
                         }
+                        Label {
+                            text: qsTr("Export folder")
+                        }
                         Button {
                             id: selectDirectory
                             text: qsTranslate("ScoreComparisonTool", "Browse")
@@ -206,12 +212,33 @@
                         Label {
                             id: exportDirectory
                             text: ""
+                            Layout.columnSpan: 2
                         }
                         Label {
-                            text: qsTr("High Accuracy Mode")
+                            text: qsTr("Handling of special durations")
+                            Layout.columnSpan: 2
+                        }
+                        Label {
+                            text: qsTr("Variable Speed Mode \n(BPM change for tuplets)")
+                        }
+                        CheckBox {
+                            id: variableSpeedMode
+                            onClicked: {
+                                if(highAccuracyMode.checked && variableSpeedMode.checked){
+                                    highAccuracyMode.checked=false
+                                }
+                            }
+                        }
+                        Label {
+                            text: qsTr("High Accuracy Mode \n(BPM change and higher sampling)")
                         }
                         CheckBox {
                             id: highAccuracyMode
+                            onClicked: {
+                                if(highAccuracyMode.checked && variableSpeedMode.checked){
+                                    variableSpeedMode.checked=false
+                                }
+                            }
                         }
                         Button {
                             id: exportButton
@@ -321,11 +348,23 @@
             var prematureSyllableBreakNeeded=false;
             var lineHeader = ":";
             var changedTempo = undefined;
-            var additional_ticks_tuplets = 0; // This is to compensate for tuplets, that go faster than the indicated base rate
+            var additional_ticks_tuplets = 0; // This is to compensate for tuplets, that go faster than the indicated base rate. Used only in variableSpeedMode
             var currentBPM = getTempo_BPM();
-            var currentTupletCorrectedBPM = getTempo_BPM();
-            var previousTupletCorrectedBPM = getTempo_BPM();
-
+            var currentTupletCorrectedBPM = getTempo_BPM(); // in variableSpeedMode
+            var previousTupletCorrectedBPM = getTempo_BPM(); // in variableSpeedMode only
+            // There are two issues with the tuplets (most common: triolets, but everything else is theoretically possible).
+            // First, in MuseScore, the nominal note duration in ticks
+            // is counted differently from actual note duration when going to the beginning of the next note.
+            // This poses a problem of mismath upon transcription regarding the duration of the notes, their nominal duration is longer than their actual, this
+            // has to be taken into account upon note duration evaluation.
+            // A second issue is specific to Ultrastar. Ultrastar does foresee tuplets and due to the relatively slow sampling, tuplets are usually not well
+            // represented and analyzed. A complete solution is proposed in high "High Accuracy Mode"
+            // which includes both much higher Ultrastar sampling and compensation for tuplet duration with local adjustment of song speed (BPM)
+            // A solution including only the variable speed for tuplets is "variableSpeedMode" where the
+            // BPM is adjusted for tuplets so that their duration is exact. This leaves the BPM at directly human understandable values related to
+            // actual BPM, but may not capture other fine details. Since the variable speed is included in the high accuracy mode, it doesn't make
+            // sense to combine the two and one can not check both boxes.
+            
             timestamp_midi_ticks = calculateMidiTicksfromTicks(cursor.tick);
         
             while (cursor.segment) {
@@ -378,7 +417,15 @@
                     }
                     
                     var currentTupletRatio=tupletRatio(cursor);
-                    additional_ticks_tuplets+=Math.round(cursor.element.duration.ticks*(1-1.0/currentTupletRatio));
+                    if (variableSpeedMode)
+                    {
+                        // The logics behind this is that since we use the BPM to advance faster during tuplets, we also need to advance
+                        // the ticks faster.
+                        additional_ticks_tuplets+=Math.round(cursor.element.duration.ticks*(1-1.0/currentTupletRatio));
+                    } else {
+                        // No adjustment for midi ticks if we don't want to change BPM for the tuplet
+                        currentTupletRatio=1; // No correction for tuplets unless we are in variableSpeedMode
+                    }
 
                     lineHeader = ":"
                     if (makeGolden) {
@@ -391,12 +438,15 @@
                     if (changedTempo) {
                         currentBPM=changedTempo;
                     }
-                    currentTupletCorrectedBPM=currentBPM*currentTupletRatio;
-                    if(currentTupletCorrectedBPM != previousTupletCorrectedBPM)
+                    if (variableSpeedMode) // changes in BPM to implement the tuplets in Ultrastar, only done in variableSpeedMode
                     {
-                        previousTupletCorrectedBPM=currentTupletCorrectedBPM;
-                        songContent += "B " + timestamp_midi_ticks + " " + currentTupletCorrectedBPM + crlf;
+                        currentTupletCorrectedBPM=currentBPM*currentTupletRatio;
+                        if(currentTupletCorrectedBPM != previousTupletCorrectedBPM)
+                        {
+                            previousTupletCorrectedBPM=currentTupletCorrectedBPM;
+                            songContent += "B " + timestamp_midi_ticks + " " + currentTupletCorrectedBPM + crlf;
                     
+                        }
                     }
                     
                     
