@@ -722,6 +722,17 @@
             timer2.start();
         }
         
+        Timer {
+        id: timer3
+        }
+        
+        function delay3(delayTime,cb) {
+            timer3.interval = delayTime;
+            timer3.repeat = false;
+            timer3.triggered.connect(cb);
+            timer3.start();
+        }
+        
         
         
         Window {
@@ -746,10 +757,10 @@
                         }
                 Button {
                             id: doneButtonProcessing
-                            text: qsTr("OK")
+                            text: qsTr("Close")
                             visible: false
                             onClicked: {
-                                       videoProcessingDialog.visible=false
+                                       videoProcessingDialog.hide()
                             }
                         
                 }
@@ -821,7 +832,7 @@
                                 ffmpeg_process.start(ffmpeg_command)
                                 
                                 
-                                delay2(1000,function(){cmd("play")})
+                                delay2(1000,function(){cmd("play"); })
                                 
                                 delay((songTime+1.5)*1000, function() {
                                         
@@ -829,9 +840,11 @@
                                         
                                         ffmpeg_process.waitForFinished(3000)
                                         
+                                        
+                                        
                                         endProcessing(songTime)
                                         
-                                        //pluginDialog.parent.Window.window.show()
+                                        console.log("delay");
 
                                 })
                                 
@@ -854,15 +867,23 @@
         
         function endProcessing(songTime){
             processing_messages.text="Processing for Ultrastar, please wait"
-            console.log(filePath)
             
             var filename = videoTemp.tempPath() + "/" + filenameFromScore() + ".mpg"
             var ffmpeg_command = 'ffmpeg -y -loop 1 -i "'+filePath+'/resources/white.png" -i "'+filename+'" -filter_complex "[1]scale=1 500:-1[n];[0][n]overlay=shortest=1:x=(main_w-overlay_w)/2:y=200" "'+exportDirectory.text+'/'+filenameFromScore() + '.mpg"'
             
             ffmpeg_process.start(ffmpeg_command)
-            console.log(ffmpeg_process.waitForFinished(1000*songTime)) // It shouldn't take longer than the song to process this
             
-            doneButtonProcessing.visible=true
+            delay3(1000, function() {
+                            
+                    ffmpeg_process.waitForFinished(3000+songTime*200);
+                    console.log("endProcessing");
+                    doneButtonProcessing.visible=true;
+                    processing_messages.text="Processing for Ultrastar done"
+            })
+            
+             // It shouldn't take longer than the song to process this
+            
+            
             
             
         }
