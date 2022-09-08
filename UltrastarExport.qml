@@ -49,9 +49,6 @@
             loadVoiceList(instrumentPlayer1.currentText, player1Voices, voicePlayer1);
             loadVoiceList(instrumentPlayer2.currentText, player2Voices, voicePlayer2);
             directorySelectDialog.folder = ((Qt.platform.os=="windows")? "file:///" : "file://") + exportDirectory.text;
-            highAccuracyMode.checked=false;
-            variableSpeedMode.checked=true;
-            exportVideo.checked=true;
         }
 
         function loadInstrumentList(instrumentList) {
@@ -229,6 +226,7 @@
                         }
                         CheckBox {
                             id: variableSpeedMode
+                            checked: true
                             onClicked: {
                                 if(highAccuracyMode.checked && variableSpeedMode.checked){
                                     highAccuracyMode.checked=false
@@ -240,6 +238,7 @@
                         }
                         CheckBox {
                             id: highAccuracyMode
+                            checked: false
                             onClicked: {
                                 if(highAccuracyMode.checked && variableSpeedMode.checked){
                                     variableSpeedMode.checked=false
@@ -251,6 +250,7 @@
                         }
                         CheckBox {
                             id: exportVideo
+                            checked: true
                         }
                         Button {
                             id: exportButton
@@ -283,9 +283,12 @@
             exportStatus.text = qsTr("Exporting .mp3 File.")
             exportAudioFile()
             exportStatus.text = ""
+            if(exportVideo.checked)
+            {
             exportStatus.text = qsTr("Exporting .mpg File.")
             exportVideoFile()
             exportStatus.text = ""
+            }
             
         }
 
@@ -318,8 +321,14 @@
             txtContent += "#ARTIST:" + composer + crlf
 
             txtContent += "#MP3:" + filenameFromScore() + ".mp3" + crlf
-            txtContent += "#VIDEO:" + crlf
-            txtContent += "#VIDEOGAP:" + crlf
+            if(exportVideo.checked)
+            {
+                txtContent += "#VIDEO:" + filenameFromScore() + ".mpg" + crlf
+                txtContent += "#VIDEOGAP:1" + crlf
+            } else {
+                txtContent += "#VIDEO:" + crlf
+                txtContent += "#VIDEOGAP:" + crlf
+            }
             txtContent += "#START:0" + crlf
 
             txtContent += "#BPM:" + getTempo_BPM() + crlf;
@@ -368,6 +377,7 @@
             var currentBPM = getTempo_BPM();
             var currentTupletCorrectedBPM = getTempo_BPM(); // in variableSpeedMode
             var previousTupletCorrectedBPM = getTempo_BPM(); // in variableSpeedMode only
+            var previousWasRest = false;
             // There are two issues with the tuplets (most common: triolets, but everything else is theoretically possible).
             // First, in MuseScore, the nominal note duration in ticks
             // is counted differently from actual note duration when going to the beginning of the next note.
@@ -404,22 +414,29 @@
                 }
 
                 if (needABreak && gotfirstsyllable) {
-                    timestamp_midi_ticks = calculateMidiTicksfromTicks(cursor.tick);
+                    timestamp_midi_ticks = calculateMidiTicksfromTicks(cursor.tick+additional_ticks_tuplets);
                     songContent += "-" + timestamp_midi_ticks + crlf
                     needABreak=false;
                     tookAbreak=true;
+                }
+                
+                if(previousWasRest)
+                {
+                    timestamp_midi_ticks = calculateMidiTicksfromTicks(cursor.tick+additional_ticks_tuplets);
                 }
         
                 needABreak = checkForMarkerInStaffText(cursor.segment, "/", true)
                 makeGolden = checkForMarkerInStaffText(cursor.segment, "*", true)
                 makeFreestyle = checkForMarkerInStaffText(cursor.segment, "F", true)
                 changedTempo = getNewBPMFromSegment(cursor.segment);
+                console.log(changedTempo);
                 prematureSyllableBreakNeeded=makeGolden||makeFreestyle||changedTempo
 
                 if (hasLyricsatCurrentLocation(cursor)) {
                     syllable += getLyricsAtCurrentLocation(cursor);
                 }
                 if (cursor.element && cursor.element.type === Element.CHORD) {
+                    previousWasRest=false;
                     if (tookAbreak){
                         tookAbreak=false;
                         timestamp_midi_ticks = calculateMidiTicksfromTicks(cursor.tick+additional_ticks_tuplets);
@@ -433,7 +450,7 @@
                     }
                     
                     var currentTupletRatio=tupletRatio(cursor);
-                    if (variableSpeedMode)
+                    if (variableSpeedMode.checked)
                     {
                         // The logics behind this is that since we use the BPM to advance faster during tuplets, we also need to advance
                         // the ticks faster.
@@ -454,7 +471,7 @@
                     if (changedTempo) {
                         currentBPM=changedTempo;
                     }
-                    if (variableSpeedMode) // changes in BPM to implement the tuplets in Ultrastar, only done in variableSpeedMode
+                    if (variableSpeedMode.checked) // changes in BPM to implement the tuplets in Ultrastar, only done in variableSpeedMode
                     {
                         currentTupletCorrectedBPM=currentBPM*currentTupletRatio;
                         if(currentTupletCorrectedBPM != previousTupletCorrectedBPM)
@@ -467,6 +484,10 @@
                     
                     
                 }
+                if (cursor.element && cursor.element.type === Element.REST) {
+                        previousWasRest=true;
+                }
+                
                 cursor.next()
             }
             if (syllable!=""){
@@ -501,8 +522,9 @@
         }
         
         function tupletRatio(cursor){
+                
                 var theoretical_duration_ticks = cursor.element.duration.ticks;
-                var real_duration_ticks = cursor.segment.next.tick - cursor.segment.tick;
+                var real_duration_ticks = cursor.element.globalDuration.ticks;
                 return theoretical_duration_ticks/real_duration_ticks;
         }
         
@@ -689,6 +711,17 @@
             timer.start();
         }
         
+        Timer {
+        id: timer2
+        }
+        
+        function delay2(delayTime,cb) {
+            timer2.interval = delayTime;
+            timer2.repeat = false;
+            timer2.triggered.connect(cb);
+            timer2.start();
+        }
+        
         
         
         Window {
@@ -716,7 +749,7 @@
                             text: qsTr("OK")
                             visible: false
                             onClicked: {
-                                Qt.quit()
+                                       videoProcessingDialog.visible=false
                             }
                         
                 }
@@ -784,17 +817,19 @@
                                 var songTime = curScore.duration
                                 var ffmpeg_command = 'ffmpeg -y -t '+(songTime+2)+desktopVideoStreamOption()+' -vf "crop='+(widthDialog*pixelRatio)+':'+(heightDialog*pixelRatio)+':'+(topX*pixelRatio)+':'+(topY*pixelRatio) +'"  -r 24 "'+filename+'" '
                                 cmd("rewind")
-                                cmd("play")
+                                
                                 ffmpeg_process.start(ffmpeg_command)
                                 
                                 
-                                delay((songTime+0.5)*1000, function() {
+                                delay2(1000,function(){cmd("play")})
+                                
+                                delay((songTime+1.5)*1000, function() {
                                         
                                         videoProcessingDialog.show()
                                         
                                         ffmpeg_process.waitForFinished(3000)
                                         
-                                        endProcessing()
+                                        endProcessing(songTime)
                                         
                                         //pluginDialog.parent.Window.window.show()
 
@@ -817,9 +852,19 @@
         }
         
         
-        function endProcessing(){
-            processing_messages.text="Processing for Ultrastar"
-                            
+        function endProcessing(songTime){
+            processing_messages.text="Processing for Ultrastar, please wait"
+            console.log(filePath)
+            
+            var filename = videoTemp.tempPath() + "/" + filenameFromScore() + ".mpg"
+            var ffmpeg_command = 'ffmpeg -y -loop 1 -i "'+filePath+'/resources/white.png" -i "'+filename+'" -filter_complex "[1]scale=1 500:-1[n];[0][n]overlay=shortest=1:x=(main_w-overlay_w)/2:y=200" "'+exportDirectory.text+'/'+filenameFromScore() + '.mpg"'
+            
+            ffmpeg_process.start(ffmpeg_command)
+            console.log(ffmpeg_process.waitForFinished(1000*songTime)) // It shouldn't take longer than the song to process this
+            
+            doneButtonProcessing.visible=true
+            
+            
         }
         
         
