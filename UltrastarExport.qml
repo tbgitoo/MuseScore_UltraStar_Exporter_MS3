@@ -2,13 +2,17 @@
     import QtQuick.Controls 1.1
     import QtQuick.Layouts 1.1
     import QtQuick.Dialogs 1.2
+    import QtQuick.Window 2.2
     import Qt.labs.settings 1.0
+    
+    
     // FileDialog
     import Qt.labs.folderlistmodel 2.1
     import QtQml 2.2
     import MuseScore 3.0
     import FileIO 3.0
-
+    
+ 
 
     // This MuseScore Plugin is licensed under the GPL Version 2
     //Copyright Joseph Eoff, April 2015
@@ -47,6 +51,7 @@
             directorySelectDialog.folder = ((Qt.platform.os=="windows")? "file:///" : "file://") + exportDirectory.text;
             highAccuracyMode.checked=false;
             variableSpeedMode.checked=true;
+            exportVideo.checked=true;
         }
 
         function loadInstrumentList(instrumentList) {
@@ -87,6 +92,7 @@
             property alias exportDirectory: exportDirectory.text
             property alias highAccuracyMode: highAccuracyMode.checked
             property alias variableSpeedMode: variableSpeedMode.checked
+            property alias exportVideo: exportVideo.checked
         }
 
         ListModel {
@@ -240,6 +246,12 @@
                                 }
                             }
                         }
+                        Label {
+                            text: qsTr("Export video file")
+                        }
+                        CheckBox {
+                            id: exportVideo
+                        }
                         Button {
                             id: exportButton
                             text: qsTranslate("PrefsDialogBase", "Export")
@@ -271,6 +283,10 @@
             exportStatus.text = qsTr("Exporting .mp3 File.")
             exportAudioFile()
             exportStatus.text = ""
+            exportStatus.text = qsTr("Exporting .mpg File.")
+            exportVideoFile()
+            exportStatus.text = ""
+            
         }
 
         function exportTxtFile() {
@@ -523,7 +539,8 @@
             }
             return undefined; //invalid - no tempo text found
         }
-
+        
+        
         function calculateMidiTicksfromTicks(ticks) {
             if (highAccuracyMode.checked)
             {
@@ -615,5 +632,196 @@
             name = name.replace(/ /g, "_")
             return name
         }
+        
+        
+        function exportVideoFile()
+        {
+            pluginDialog.parent.Window.window.hide()
+            
+            
+            videoDialog.show();
+            //var theScreen = Qt.application.screens[0];
+            
+            
+        }
+        
+        function desktopVideoStreamOption()
+        {
+            return (' -f avfoundation  -i "1" ')
+        }
+        
+        function getVideoPixelRatio()
+        {
+            var ffprobe_command = "ffprobe "+desktopVideoStreamOption()+" -show_entries stream=width,height"
+            ffmpeg_process.start(ffprobe_command)
+            ffmpeg_process.waitForFinished(3000)
+            var video_screen_size=String(ffmpeg_process.readAllStandardOutput())
+            var width_position=video_screen_size.indexOf("width")
+            var height_position=video_screen_size.indexOf("height")
+            var width_string = video_screen_size.substr(width_position+6,height_position-width_position-7)
+            return(width_string.valueOf()/Qt.application.screens[0].width)
+            
+            
+            
+        }
+        
+        
+        
+        
+        
+        FileIO {
+            id: videoTemp
+            onError: console.log(msg + "  Filename = " + videoTemp.source)
+        }
+        
+        QProcess{
+            id: ffmpeg_process
+        }
+        
+        Timer {
+        id: timer
+        }
+        
+        function delay(delayTime,cb) {
+            timer.interval = delayTime;
+            timer.repeat = false;
+            timer.triggered.connect(cb);
+            timer.start();
+        }
+        
+        
+        
+        Window {
+        id: videoProcessingDialog
+        visible: false
+        title: qsTr("UltraStarExport: Video Processing")
+        width: 600
+        height: 300
+        color: "#d7d6d5"
+        Rectangle {
+            width: parent.width
+            height: parent.height
+            GridLayout {
+                id: grid_processing_messages
+                columns: 2
+                anchors.fill: parent
+                anchors.margins: 10
+                Label {
+                        id: processing_messages
+                        text: qsTr("Completing capture ...")
+                        Layout.columnSpan: 2
+                        }
+                Button {
+                            id: doneButtonProcessing
+                            text: qsTr("OK")
+                            visible: false
+                            onClicked: {
+                                Qt.quit()
+                            }
+                        
+                }
+                
+            }
+        }
+        }
+        
+        
+        
+        
+        
+        
+        
+        Window {
+        id: videoDialog
+        visible: false
+        title: qsTr("Video Export")
+        width: 600
+        height: 300
+        opacity: 0.95
+        
+        Rectangle {
+            width: parent.width
+            height: parent.height
+            GridLayout {
+                id: grid_transparency
+                columns: 2
+                anchors.fill: parent
+                anchors.margins: 10
+                Label {
+                        text: qsTr("Select video capture area")
+                        Layout.columnSpan: 2
+                        }
+                Label {
+                        text: qsTr("Adjust this window such that it covers the area of interest")
+                        Layout.columnSpan: 2
+                        }
+                Label {
+                        text: qsTr("Use the toggle transparency button to view through the window")
+                        Layout.columnSpan: 2
+                        }
+                Button {
+                            id: tranparencySecondary
+                            text: qsTr("Toggle Transparency")
+                            onClicked: {
+                                if(videoDialog.opacity==0.95) {videoDialog.opacity=0.2 } else {videoDialog.opacity=0.95}
+                            } // onClicked
+                }
+                
+                Button {
+                            id: doneButtonSecondary
+                            text: qsTr("Done")
+                            onClicked: {
+                            
+                                       
+                            
+                                var pixelRatio=getVideoPixelRatio() // Qt has "device-independent pixels"
+                                var filename = videoTemp.tempPath() + "/" + filenameFromScore() + ".mpg"
+                                var topX = videoDialog.x
+                                var topY = videoDialog.y
+                                var widthDialog = videoDialog.width
+                                var heightDialog = videoDialog.height
+                                videoDialog.opacity=0
+                                var songTime = curScore.duration
+                                var ffmpeg_command = 'ffmpeg -y -t '+(songTime+2)+desktopVideoStreamOption()+' -vf "crop='+(widthDialog*pixelRatio)+':'+(heightDialog*pixelRatio)+':'+(topX*pixelRatio)+':'+(topY*pixelRatio) +'"  -r 24 "'+filename+'" '
+                                cmd("rewind")
+                                cmd("play")
+                                ffmpeg_process.start(ffmpeg_command)
+                                
+                                
+                                delay((songTime+0.5)*1000, function() {
+                                        
+                                        videoProcessingDialog.show()
+                                        
+                                        ffmpeg_process.waitForFinished(3000)
+                                        
+                                        endProcessing()
+                                        
+                                        //pluginDialog.parent.Window.window.show()
+
+                                })
+                                
+                                
+        
+                                
+                                //
+                                
+                            } // onClicked
+                }
+            }
+        }
+                        
+                        
+                        
+        
+        
+        }
+        
+        
+        function endProcessing(){
+            processing_messages.text="Processing for Ultrastar"
+                            
+        }
+        
+        
     }
 
