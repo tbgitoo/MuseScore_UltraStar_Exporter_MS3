@@ -24,8 +24,10 @@
         pluginType: "dialog"
         
         id: pluginDialog
-        width:  500
-        height: 600
+        width:  600
+        height: 650
+        
+        
 
         onRun: {
             // check MuseScore version
@@ -90,6 +92,9 @@
             property alias highAccuracyMode: highAccuracyMode.checked
             property alias variableSpeedMode: variableSpeedMode.checked
             property alias exportVideo: exportVideo.checked
+            property alias mpthreedelay: mpthreedelay.text
+            property alias videodelay: videodelay.text
+            property alias desktopVideoStream: desktopVideoStream.text
         }
 
         ListModel {
@@ -252,6 +257,29 @@
                             id: exportVideo
                             checked: true
                         }
+                        Label {
+                            text: qsTr("mp3 delay: silent beginning in mp3 file (milliseconds)")
+                        }
+                        TextField {
+                            id: mpthreedelay
+                            text: "45"
+                        }
+                        Label {
+                            text: qsTr("video export: delay starting Musescore replay (milliseconds)")
+                        }
+                        TextField {
+                            id: videodelay
+                            text: "300"
+                        }
+                        Label {
+                            text: qsTr("AVFoundation channel for ffmpeg. Type\n"+
+                                'ffmpeg -list_devices true -f avfoundation  -i ""\n'+
+                                "in a terminal window and check")
+                        }
+                        TextField {
+                            id: desktopVideoStream
+                            text: "1"
+                        }
                         Button {
                             id: exportButton
                             text: qsTranslate("PrefsDialogBase", "Export")
@@ -324,7 +352,7 @@
             if(exportVideo.checked)
             {
                 txtContent += "#VIDEO:" + filenameFromScore() + ".mpg" + crlf
-                txtContent += "#VIDEOGAP:1" + crlf
+                txtContent += "#VIDEOGAP:"+ (1-Math.round(videodelay.text)/1000) + crlf
             } else {
                 txtContent += "#VIDEO:" + crlf
                 txtContent += "#VIDEOGAP:" + crlf
@@ -333,7 +361,7 @@
 
             txtContent += "#BPM:" + getTempo_BPM() + crlf;
 
-            txtContent += "#GAP:0" + crlf
+            txtContent += "#GAP:" + Math.round(mpthreedelay.text) + crlf
 
             if (duet.checked) {
                 txtContent += "P1" + crlf
@@ -669,7 +697,11 @@
         
         function desktopVideoStreamOption()
         {
-            return (' -f avfoundation  -i "1" ')
+            // For now, this doesn't work. the ffmpeg -list_devices true -f avfoundation  -i "" causes an error and so even
+            // though on the command line, one get's these results, they cannot be returned
+            // So for now, work with a setting in the dialog
+            
+            return (' -f avfoundation  -i "'+Math.round(settings.desktopVideoStream)+'" ')
         }
         
         function getVideoPixelRatio()
@@ -698,6 +730,10 @@
         
         QProcess{
             id: ffmpeg_process
+        }
+        
+        QProcess{
+            id: ffprobe_process
         }
         
         Timer {
@@ -732,6 +768,7 @@
             timer3.triggered.connect(cb);
             timer3.start();
         }
+        
         
         
         
