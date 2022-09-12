@@ -95,6 +95,11 @@
             property alias mpthreedelay: mpthreedelay.text
             property alias videodelay: videodelay.text
             property alias desktopVideoStream: desktopVideoStream.text
+            property alias videoDialog_width:videoDialog.width
+            property alias videoDialog_height:videoDialog.height
+            property alias videoDialog_x:videoDialog.x
+            property alias videoDialog_y:videoDialog.y
+            property alias exportCover:exportCover.checked
         }
 
         ListModel {
@@ -258,18 +263,28 @@
                             checked: true
                         }
                         Label {
+                            text: qsTr("Include cover image")
+                        }
+                        CheckBox {
+                            id: exportCover
+                            checked: false
+                        }
+                        Label {
                             text: qsTr("mp3 delay: silent beginning in mp3 file (milliseconds)")
                         }
                         TextField {
                             id: mpthreedelay
                             text: "45"
+                            validator: IntValidator{bottom:0; top:32767;}
                         }
                         Label {
                             text: qsTr("video export: delay starting Musescore replay (milliseconds)")
+                            
                         }
                         TextField {
                             id: videodelay
                             text: "300"
+                            validator: IntValidator{bottom:-32767; top:32767;}
                         }
                         Label {
                             text: qsTr("AVFoundation channel for ffmpeg. Type\n"+
@@ -279,6 +294,7 @@
                         TextField {
                             id: desktopVideoStream
                             text: "1"
+                            validator: IntValidator{bottom:0; top:32767;}
                         }
                         Button {
                             id: exportButton
@@ -317,7 +333,13 @@
             exportVideoFile()
             exportStatus.text = ""
             }
-            
+            if(!exportVideo.checked) // with video export, the cover export will be called at the end of processing
+            {
+                if(exportCover.checked)
+                {
+                    exportCoverFile()
+                }
+            }
         }
 
         function exportTxtFile() {
@@ -357,6 +379,9 @@
                 txtContent += "#VIDEO:" + crlf
                 txtContent += "#VIDEOGAP:" + crlf
             }
+                        
+            if(exportCover.checked){txtContent += "#COVER:" + filenameFromScore() + ".jpg"+crlf}
+            
             txtContent += "#START:0" + crlf
 
             txtContent += "#BPM:" + getTempo_BPM() + crlf;
@@ -736,6 +761,11 @@
             id: ffprobe_process
         }
         
+        QProcess{
+            id: imageMagick_process
+        }
+        
+        
         Timer {
         id: timer
         }
@@ -812,6 +842,9 @@
         
         
         
+        
+        
+        
         Window {
         id: videoDialog
         visible: false
@@ -825,26 +858,35 @@
             height: parent.height
             GridLayout {
                 id: grid_transparency
-                columns: 2
+                columns: 3
                 anchors.fill: parent
                 anchors.margins: 10
                 Label {
                         text: qsTr("Select video capture area")
-                        Layout.columnSpan: 2
+                        Layout.columnSpan: 3
                         }
                 Label {
                         text: qsTr("Adjust this window such that it covers the area of interest")
-                        Layout.columnSpan: 2
+                        Layout.columnSpan: 3
                         }
                 Label {
                         text: qsTr("Use the toggle transparency button to view through the window")
-                        Layout.columnSpan: 2
+                        Layout.columnSpan: 3
                         }
                 Button {
                             id: tranparencySecondary
                             text: qsTr("Toggle Transparency")
                             onClicked: {
                                 if(videoDialog.opacity==0.95) {videoDialog.opacity=0.2 } else {videoDialog.opacity=0.95}
+                            } // onClicked
+                }
+                
+                Button {
+                            id: cancelSecondary
+                            text: qsTr("Cancel")
+                            onClicked: {
+                                videoDialog.hide();
+                                Qt.quit();
                             } // onClicked
                 }
                 
@@ -879,7 +921,7 @@
                                         
                                         
                                         
-                                        endProcessing(songTime)
+                                        endVideoProcessing(songTime)
                                         
                                         console.log("delay");
 
@@ -902,7 +944,7 @@
         }
         
         
-        function endProcessing(songTime){
+        function endVideoProcessing(songTime){
             processing_messages.text="Processing for Ultrastar, please wait"
             
             var filename = videoTemp.tempPath() + "/" + filenameFromScore() + ".mpg"
@@ -913,9 +955,18 @@
             delay3(1000, function() {
                             
                     ffmpeg_process.waitForFinished(3000+songTime*200);
-                    console.log("endProcessing");
+                    console.log("endVideoProcessing");
+                    if(!exportCover.checked)
+                    {
                     doneButtonProcessing.visible=true;
+                    }
                     processing_messages.text="Processing for Ultrastar done"
+                    if(exportCover.checked)
+                    {
+                        videoProcessingDialog.hide()
+                        exportCoverFile()
+                    }
+            
             })
             
              // It shouldn't take longer than the song to process this
@@ -923,6 +974,220 @@
             
             
             
+        }
+        
+        // Cover file export
+        Window {
+        id: exportCoverDialogWindow
+        visible: false
+        title: qsTr("Cover image export")
+        width: 600
+        height: 300
+        color: "#d7d6d5"
+            
+                GridLayout {
+                    id: grid_export_cover
+                    columns: 2
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    Label {
+                        text: qsTr("Cover image")
+                        Layout.columnSpan: 2
+                    }
+                    Label {
+                        text: qsTr("Select from file")
+                        
+                    }
+                    Button {
+                            id: selectCoverFileButton
+                            text: qsTranslate("ScoreComparisonTool", "Browse")
+                            onClicked: {
+                                coverFileSelectDialog.open();
+                            }
+                        }
+                    Label {
+                        text: qsTr("Use screenshot")
+                        
+                    }
+                    Button {
+                            id: selectCoverScreenshotButton
+                            text: qsTr("Take screenshot")
+                            onClicked: {
+                                exportCoverDialogWindow.hide();
+                                exportCoverScreenShotDialog.show();
+                            }
+                        }
+                        
+                    Button {
+                            id: cancelButtonCover
+                            text: qsTr("Cancel")
+                            onClicked: {
+                                exportCoverDialogWindow.hide()
+                            } // onClicked
+                        }
+                        
+                    
+                    
+                }
+                
+            FileDialog {
+            id: coverFileSelectDialog
+            title: qsTr("Please select an image file")
+            selectFolder: false
+            selectMultiple: false
+            visible: false
+            onAccepted: {
+                var coverFileSelectedPath = this.fileUrls
+                coverFileSelectDialog.close()
+                exportCoverFileWithPath(coverFileSelectedPath)
+            }
+            Component.onCompleted: visible = false
+        }
+        
+        MessageDialog {
+            id: warningDialogCover
+            visible: false
+            title: qsTr("Warning")
+            text: "Warning"
+            onAccepted: {
+                Qt.quit()
+            }
+            function openWarningDialog(message) {
+                text = message
+                open()
+            }
+        }
+            
+        } // End parent window for ExportCoverDialog
+        
+        Window {
+        id: exportCoverScreenShotDialog
+        visible: false
+        title: qsTr("Cover export: Screenshot")
+        width: 600
+        height: 300
+        opacity: 0.95
+        
+        Rectangle {
+            width: parent.width
+            height: parent.height
+            GridLayout {
+                id: grid_transparency_cover_screenshot
+                columns: 3
+                anchors.fill: parent
+                anchors.margins: 10
+                
+                Label {
+                        text: qsTr("Select screenshot capture area")
+                        Layout.columnSpan: 3
+                        }
+                Label {
+                        text: qsTr("Adjust this window such that it covers the area of interest")
+                        Layout.columnSpan: 3
+                        }
+                Label {
+                        text: qsTr("Use the toggle transparency button to view through the window")
+                        Layout.columnSpan: 3
+                        }
+                Button {
+                            id: tranparencyScreenshot
+                            text: qsTr("Toggle Transparency")
+                            onClicked: {
+                                if(exportCoverScreenShotDialog.opacity==0.95) {exportCoverScreenShotDialog.opacity=0.2 } else {exportCoverScreenShotDialog.opacity=0.95}
+                            } // onClicked
+                }
+                
+                Button {
+                            id: cancelScreenshot
+                            text: qsTr("Cancel")
+                            onClicked: {
+                                        
+                                        exportCoverScreenShotDialog.hide();
+                                        exportCoverDialogWindow.show();
+                                
+                            } // onClicked
+                }
+                
+                Button {
+                            id: doneButtonScreenshot
+                            text: qsTr("Take screenshot")
+                            onClicked: {
+                            
+                                var pixelRatio=getVideoPixelRatio() // Qt has "device-independent pixels"
+                                var filename = videoTemp.tempPath() + "/" + filenameFromScore() + ".png"
+                                var topX = exportCoverScreenShotDialog.x
+                                var topY = exportCoverScreenShotDialog.y
+                                var widthDialog = exportCoverScreenShotDialog.width
+                                var heightDialog = exportCoverScreenShotDialog.height
+                                exportCoverScreenShotDialog.opacity=0
+                                var screencapturecommand = 'screencapture -R '+(topX*pixelRatio)+','+(topY*pixelRatio)+','+(widthDialog*pixelRatio)+','+(heightDialog*pixelRatio)+ ' -t png '+filename
+                                imageMagick_process.start(screencapturecommand)
+                                imageMagick_process.waitForFinished(3000)
+                                
+                                exportCoverScreenShotDialog.hide()
+                                
+                                exportCoverFileWithPath(filename)
+                                
+                                
+                                
+        
+                                
+                                //
+                                
+                            } // onClicked
+                }
+                
+                }
+        
+        
+        }
+        
+        } // End exportCoverScreenShotDialog
+        
+        
+        
+        
+        function exportCoverFile()
+        {
+            console.log("exportCoverFile")
+            pluginDialog.parent.Window.window.hide()
+            exportCoverDialogWindow.show();
+            
+            
+        }
+        
+        // This function aims at producing a cropped and resized image, 400x400
+        function exportCoverFileWithPath(filePath)
+        {
+            var imageMagick_command = "identify "+filePath;
+            imageMagick_process.start(imageMagick_command)
+            imageMagick_process.waitForFinished(3000);
+            var imageInfo=imageMagick_process.readAllStandardOutput();
+            if(!imageInfo || imageInfo=="")
+            {
+                    warningDialogCover.openWarningDialog(
+                            qsTr("File cannot be analyzed with ImageMagick. Is it an image?"))
+                   return;
+            }
+            var imageInfoString = String(imageInfo)
+            var begin_type=imageInfoString.indexOf(" PNG ")
+            var size_info_string=imageInfoString.substr(begin_type+5)
+            var end_type=size_info_string.indexOf(" ")
+            var size_info_isolated=size_info_string.substr(0,end_type)
+            var x_pos =size_info_isolated.indexOf("x")
+            var width=Math.round(size_info_isolated.substr(0,x_pos))
+            var height=Math.round(size_info_isolated.substr(x_pos+1))
+            var final_size=width
+            if(height<final_size)
+            {
+                final_size=height
+            }
+            imageMagick_command="magick "+filePath+" -crop "+final_size+"x"+final_size+"+"+Math.round((width-final_size)/2)+"+"+Math.round((height-final_size)/2)+" -resize 400x400 "+exportDirectory.text + "/" + filenameFromScore() + ".jpg"
+            imageMagick_process.start(imageMagick_command)
+            imageMagick_process.waitForFinished(3000)
+            
+            
+        
         }
         
         
